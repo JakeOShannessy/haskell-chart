@@ -62,7 +62,7 @@ module Graphics.Rendering.Chart.Layout(
     layout1_top_axis,
     layout1_bottom_axis,
     layout1_yaxes_control,
-    layout1_margin,
+    layout1_margins,
     layout1_plots,
     layout1_legend,
     layout1_grid_last,
@@ -138,7 +138,7 @@ data Layout1 x y = Layout1 {
     --   to the left/right axes. The default value is 'id'.
     _layout1_yaxes_control   :: ([y],[y]) -> ([y],[y]),
 
-    _layout1_margin          :: Double,
+    _layout1_margins          :: (Double, Double, Double, Double),
     _layout1_plots           :: [Either (Plot x y) (Plot x y)],
     _layout1_legend          :: Maybe LegendStyle,
 
@@ -198,7 +198,7 @@ renderStackedLayouts slp@(StackedLayouts{_slayouts_layouts=sls@(sl1:_)}) = gridT
     mkGrid ((StackedLayout l),i)
         = (noPickFn $ layout1TitleToRenderable l)
           `wideAbove`
-          (addMarginsToGrid (lm,lm,lm,lm) $ mkPlotArea baxis taxis)
+          (addMarginsToGrid lms $ mkPlotArea baxis taxis)
           `aboveWide`
           (if showLegend then noPickFn $ renderLegend l legenditems else emptyRenderable)
 
@@ -216,7 +216,8 @@ renderStackedLayouts slp@(StackedLayouts{_slayouts_layouts=sls@(sl1:_)}) = gridT
         isTopPlot = i == 0
         isBottomPlot = i == length sls -1
 
-        lm = _layout1_margin l
+        -- lm = _layout1_margin l
+        lms = _layout1_margins l
 
         baxis = mkAxis (_layout1_bottom_axis l) (isBottomPlot || not (_slayouts_compress_xlabels slp))
         taxis = mkAxis (_layout1_top_axis l) (isTopPlot || not (_slayouts_compress_xlabels slp))
@@ -260,11 +261,11 @@ layout1ToGrid :: (Ord x, Ord y) =>
 layout1ToGrid l = aboveN
        [  tval $ layout1TitleToRenderable l
        ,  weights (1,1) $ tval $ gridToRenderable $
-              addMarginsToGrid (lm,lm,lm,lm) (layout1PlotAreaToGrid l)
+              addMarginsToGrid lms (layout1PlotAreaToGrid l)
        ,  tval $ layout1LegendsToRenderable l
        ]
   where
-    lm = _layout1_margin l
+    lms = _layout1_margins l
 
 layout1TitleToRenderable :: (Ord x, Ord y) => Layout1 x y
                                            -> Renderable (Layout1Pick x y)
@@ -274,7 +275,7 @@ layout1TitleToRenderable l = addMargins (lm/2,0,0,0)
   where
     title = label (_layout1_title_style l) HTA_Centre VTA_Centre
                   (_layout1_title l)
-    lm    = _layout1_margin l
+    (lm,_,_,_)    = _layout1_margins l
 
 getLayout1XVals :: Layout1 x y -> [x]
 getLayout1XVals l = concatMap (fst._plot_all_points.deEither) (_layout1_plots l)
@@ -296,13 +297,13 @@ renderLegend l (lefts,rights) = gridToRenderable g
                      , weights (1,1) $ tval $ emptyRenderable
                      , tval $ mkLegend rights ]
 
-    lm     = _layout1_margin l
+    (lm1,lm2,lm3,lm4)     = _layout1_margins l
 
     mkLegend vals = case (_layout1_legend l) of
         Nothing -> emptyRenderable
         Just ls ->  case filter ((/="").fst) vals of
             []  -> emptyRenderable ;
-            lvs -> addMargins (0,lm,lm,lm) $
+            lvs -> addMargins (0,lm2,lm3,lm4) $
                        mapPickFn L1P_Legend $ legendToRenderable (Legend ls lvs)
 
 layout1LegendsToRenderable :: (Ord x, Ord y) =>
@@ -326,23 +327,24 @@ layout1PlotAreaToGrid l = layer2 `overlay` layer1
          , besideN [er,     er,  bl,    baxis,  br,    er,  er       ]
          , besideN [er,     er,  er,    btitle, er,    er,  er       ]
          ]
-    
-    (ttitle,_) = atitle HTA_Centre VTA_Bottom   0 _layout1_top_axis    L1P_TopAxisTitle   
-    (btitle,_) = atitle HTA_Centre VTA_Top      0 _layout1_bottom_axis L1P_BottomAxisTitle
-    (ltitle,lam) = atitle HTA_Right  VTA_Centre 270 _layout1_left_axis   L1P_LeftAxisTitle
-    (rtitle,ram) = atitle HTA_Left   VTA_Centre 270 _layout1_right_axis  L1P_RightAxisTitle
+    (topMargin, bottomMargin, leftMargin, rightMargin) = _layout1_margins l
+    (ttitle,_) = atitle HTA_Centre VTA_Bottom   0   topMargin     _layout1_top_axis    L1P_TopAxisTitle   
+    (btitle,_) = atitle HTA_Centre VTA_Top      0   bottomMargin  _layout1_bottom_axis L1P_BottomAxisTitle
+    (ltitle,lam) = atitle HTA_Right  VTA_Centre 270 leftMargin    _layout1_left_axis   L1P_LeftAxisTitle
+    (rtitle,ram) = atitle HTA_Left   VTA_Centre 270 rightMargin   _layout1_right_axis  L1P_RightAxisTitle
 
     er = tval $ emptyRenderable
     
     atitle :: HTextAnchor -> VTextAnchor 
             -> Double 
+            -> Double
             -> (Layout1 x y -> LayoutAxis z) 
             -> (String -> Layout1Pick x y) 
             -> (Grid (Renderable (Layout1Pick x y)), Grid (Renderable (Layout1Pick x y)))
-    atitle ha va rot af pf = if ttext == "" then (er,er) else (label,gap)
+    atitle ha va rot margin af pf = if ttext == "" then (er,er) else (label,gap)
       where
         label = tval $ mapPickFn pf $ rlabel tstyle ha va rot ttext
-        gap = tval $ spacer (_layout1_margin l,0)
+        gap = tval $ spacer (margin,0)
         tstyle = _laxis_title_style (af l)
         ttext  = _laxis_title       (af l)
 
@@ -481,7 +483,7 @@ instance (PlotValue x, PlotValue y) => Default (Layout1 x y) where
 
     , _layout1_yaxes_control   = id
 
-    , _layout1_margin          = 10
+    , _layout1_margins          = (10,10,10,10)
     , _layout1_plots           = []
     , _layout1_legend          = Just def
     , _layout1_grid_last       = False
