@@ -55,7 +55,9 @@ module Graphics.Rendering.Chart.Drawing
   , drawTextR
   , drawTextsR
   , textDrawRect
+  , rotatedTextDrawRect
   , textDimension
+  , rotatedTextDimension
   
   -- * Style Helpers
   , defaultColorSeq
@@ -284,6 +286,20 @@ textDrawRect hta vta (Point x y) s = do
   let p1 = Point x' y'
   let p2 = Point (x' + w) (y' + h)
   return $ Rect p1 p2
+  
+  
+rotatedTextDrawRect :: HTextAnchor -> VTextAnchor -> Point -> Double -> String -> ChartBackend Rect
+rotatedTextDrawRect hta vta (Point x y) rot s = do
+  ts <- textSize s
+  let bs = (sin (rot*pi/180)) * (textSizeHeight ts)
+      cs = (cos (rot*pi/180)) * (textSizeWidth ts)
+  let (w,h) = (bs, cs)
+  let lx = adjustTextX hta ts
+  let ly = adjustTextY vta ts
+  let (x',y') = (x + lx, y + ly)
+  let p1 = Point x' y'
+  let p2 = Point (x' + w) (y' + h)
+  return $ Rect p1 p2
 
 -- | Get the width and height of the string when rendered.
 --   See 'textSize'.
@@ -291,6 +307,13 @@ textDimension :: String -> ChartBackend RectSize
 textDimension s = do
   ts <- textSize s
   return (textSizeWidth ts, textSizeHeight ts)
+  
+rotatedTextDimension :: String -> Double -> ChartBackend RectSize
+rotatedTextDimension s rot = do
+  ts <- textSize s
+  let newHeight = (abs (sin (rot*pi/180))) * (textSizeWidth ts) + (abs (cos (rot*pi/180))) * (textSizeHeight ts)
+      newWidth = (abs (cos (rot*pi/180))) * (textSizeWidth ts) + (abs (sin (rot*pi/180))) * (textSizeHeight ts)
+  return (newWidth, newHeight)
   
 -- -----------------------------------------------------------------------
 -- Point Types and Drawing

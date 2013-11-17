@@ -258,11 +258,10 @@ layout1ToRenderable l =
 
 layout1ToGrid :: (Ord x, Ord y) =>
                  Layout1 x y -> Grid (Renderable (Layout1Pick x y))
-layout1ToGrid l = aboveN
+layout1ToGrid l = addMarginsToGrid lms $ aboveN
        [  tval $ layout1TitleToRenderable l
-       ,  weights (1,1) $ tval $ gridToRenderable $
-              addMarginsToGrid lms (layout1PlotAreaToGrid l)
-       ,  tval $ layout1LegendsToRenderable l
+       ,  weights (1,1) $ tval $ gridToRenderable $ layout1PlotAreaToGrid l
+       ,  tval $ layout1LegendsToRenderable l   -- TODO: find the bounding box of the ploat area and add margin below
        ]
   where
     lms = _layout1_margins l
@@ -270,12 +269,10 @@ layout1ToGrid l = aboveN
 layout1TitleToRenderable :: (Ord x, Ord y) => Layout1 x y
                                            -> Renderable (Layout1Pick x y)
 layout1TitleToRenderable l | null (_layout1_title l) = emptyRenderable
-layout1TitleToRenderable l = addMargins (lm/2,0,0,0)
-                                        (mapPickFn L1P_Title title)
+layout1TitleToRenderable l = mapPickFn L1P_Title title
   where
     title = label (_layout1_title_style l) HTA_Centre VTA_Centre
                   (_layout1_title l)
-    (lm,_,_,_)    = _layout1_margins l
 
 getLayout1XVals :: Layout1 x y -> [x]
 getLayout1XVals l = concatMap (fst._plot_all_points.deEither) (_layout1_plots l)
@@ -297,13 +294,13 @@ renderLegend l (lefts,rights) = gridToRenderable g
                      , weights (1,1) $ tval $ emptyRenderable
                      , tval $ mkLegend rights ]
 
-    (lm1,lm2,lm3,lm4)     = _layout1_margins l
+    (topMargin, bottomMargin, leftMargin, rightMargin)     = _layout1_margins l
 
     mkLegend vals = case (_layout1_legend l) of
         Nothing -> emptyRenderable
         Just ls ->  case filter ((/="").fst) vals of
             []  -> emptyRenderable ;
-            lvs -> addMargins (0,lm2,lm3,lm4) $
+            lvs -> addMargins (0, bottomMargin, leftMargin, rightMargin) $
                        mapPickFn L1P_Legend $ legendToRenderable (Legend ls lvs)
 
 layout1LegendsToRenderable :: (Ord x, Ord y) =>
@@ -324,6 +321,7 @@ layout1PlotAreaToGrid l = layer2 `overlay` layer1
          [ besideN [er,     er,  er,    ttitle, er,    er,  er       ]
          , besideN [er,     er,  tl,    taxis,  tr,    er,  er       ]
          , besideN [ltitle, lam, laxis, er,     raxis, ram, rtitle   ]
+         -- , besideN [er,     tval $ spacer (0, 120),  bl,    baxis,  br,    er,  er       ]  -- TODO: this spacing should go in at a lower level than here and be calculated from the labels
          , besideN [er,     er,  bl,    baxis,  br,    er,  er       ]
          , besideN [er,     er,  er,    btitle, er,    er,  er       ]
          ]

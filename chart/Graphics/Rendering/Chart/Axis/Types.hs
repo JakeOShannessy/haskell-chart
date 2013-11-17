@@ -50,6 +50,8 @@ module Graphics.Rendering.Chart.Axis.Types(
     axis_label_style,
     axis_grid_style,
     axis_label_gap,
+    axis_label_rotation,
+    axis_label_avoid_overlap
 
 ) where
 
@@ -106,12 +108,18 @@ data AxisData x = AxisData {
 
 -- | Control values for how an axis gets displayed.
 data AxisStyle = AxisStyle {
-    _axis_line_style  :: LineStyle,
-    _axis_label_style :: FontStyle,
-    _axis_grid_style  :: LineStyle,
+    _axis_line_style     :: LineStyle,
+    _axis_label_style    :: FontStyle,
+    _axis_grid_style     :: LineStyle,
 
     -- | How far the labels are to be drawn from the axis.
-    _axis_label_gap   :: Double
+    _axis_label_gap      :: Double,
+    
+    -- | The rotation of each label.
+    _axis_label_rotation :: Double,
+    
+    -- | Reduce the number of labels to prevent overlaps.
+    _axis_label_avoid_overlap :: Bool
 }
 
 -- | A function to generate the axis data, given the data values
@@ -167,10 +175,11 @@ axisLabelsHide ad    = ad{ _axis_labels = []}
 axisLabelsOverride  :: [(x,String)] -> AxisData x -> AxisData x
 axisLabelsOverride o ad = ad{ _axis_labels = [o] }
 
-minsizeAxis :: AxisT x -> ChartBackend RectSize
+minsizeAxis :: AxisT x -> ChartBackend RectSize     -- TODO: the size of the axis labels should be accounted for here.
 minsizeAxis (AxisT at as rev ad) = do
     labelSizes <- withFontStyle (_axis_label_style as) $ do
-      mapM (mapM textDimension) (labelTexts ad)
+      mapM (mapM (\s->rotatedTextDimension s (_axis_label_rotation as))) (labelTexts ad)
+      -- mapM (mapM textDimension) (labelTexts ad)
 
     let ag      = _axis_label_gap as
     let tsize   = maximum ([0] ++ [ max 0 (-l) | (v,l) <- _axis_ticks ad ])
@@ -187,6 +196,7 @@ minsizeAxis (AxisT at as rev ad) = do
 		     E_Left   -> (vw,vh)
 		     E_Right  -> (vw,vh)
     return sz
+    -- return (hw,300)
 
 labelTexts :: AxisData a -> [[String]]
 labelTexts ad = map (map snd) (_axis_labels ad)
@@ -223,8 +233,8 @@ renderAxis at@(AxisT et as rev ad) sz = do
     mapM_ drawTick (_axis_ticks ad)
   withFontStyle (_axis_label_style as) $ do
     labelSizes <- mapM (mapM textDimension) (labelTexts ad)
-    let sizes = map ((+ag).maximum0.map coord) labelSizes
-    let offsets = scanl (+) ag sizes
+    let sizes = map ((+ag).maximum0.map coord) labelSizes -- TODO: is not ag added twice?
+    let offsets = scanl (+) ag sizes    -- TODO: the bounding box of the rotated labels might need to be accounted for here
     mapM_ drawLabels (zip offsets  (_axis_labels ad))
   return pickfn
  where
@@ -234,12 +244,25 @@ renderAxis at@(AxisT et as rev ad) sz = do
        let t1 = axisPoint value
            t2 = t1 `pvadd` (vscale length tp)
        in alignStrokePoints [t1,t2] >>= strokePointPath
+       
+   -- |Chooses the horizontal location of the anchor point appropriately for rotation.
+   discernHTA et rot = case et of
+       E_Top    -> case compare rot 0 of
+                        EQ -> HTA_Centre
+                        LT -> HTA_Left
+                        GT -> HTA_Right
+       E_Bottom    -> case compare rot 0 of
+                        EQ -> HTA_Centre
+                        LT -> HTA_Right
+                        GT -> HTA_Left
+       E_Left   -> HTA_Right
+       E_Right  -> HTA_Left
 
    (hta,vta,coord,awayFromAxis) = case et of
-       E_Top    -> (HTA_Centre, VTA_Bottom, snd, \v -> (Vector 0 (-v)))
-       E_Bottom -> (HTA_Centre, VTA_Top,    snd, \v -> (Vector 0 v))
-       E_Left   -> (HTA_Right,  VTA_Centre, fst, \v -> (Vector (-v) 0))
-       E_Right  -> (HTA_Left,   VTA_Centre, fst, \v -> (Vector v 0))
+       E_Top    -> (discernHTA et rot, VTA_Bottom, snd, \v -> (Vector 0 (-v)))
+       E_Bottom -> (discernHTA et rot, VTA_Top,    snd, \v -> (Vector 0 v))
+       E_Left   -> (discernHTA et rot,  VTA_Centre, fst, \v -> (Vector (-v) 0))
+       E_Right  -> (discernHTA et rot,   VTA_Centre, fst, \v -> (Vector v 0))
 
    avoidOverlaps labels = do
        rects <- mapM labelDrawRect labels
@@ -250,14 +273,19 @@ renderAxis at@(AxisT et as rev ad) sz = do
        let pt = axisPoint value `pvadd` (awayFromAxis ag)
        r <- textDrawRect hta vta pt s
        return (hBufferRect r,(value,s))
-
+       
+   rot = _axis_label_rotation as
+   
    drawLabels (offset,labels) = do
-        labels' <- avoidOverlaps labels
+        labels' <- if _axis_label_avoid_overlap as 
+                        then avoidOverlaps labels
+                        else return labels
         mapM_ drawLabel labels'
      where
        drawLabel (value,s) = do
-           drawTextA hta vta (axisPoint value `pvadd` (awayFromAxis offset)) s
-           textDimension s
+           drawTextR hta vta rot (axisPoint value `pvadd` (awayFromAxis offset)) s -- TODO: automatically account for the effect of rotation on margins, currently they have to be expanded manually.
+                                                                                                
+           rotatedTextDimension s rot
 
    ag = _axis_label_gap as
    pickfn = Just . invAxisPoint
@@ -377,10 +405,12 @@ defaultAxisStyle = def
 
 instance Default AxisStyle where
   def = AxisStyle 
-    { _axis_line_style  = defaultAxisLineStyle
-    , _axis_label_style = def
-    , _axis_grid_style  = defaultGridLineStyle
-    , _axis_label_gap   = 10
+    { _axis_line_style          = defaultAxisLineStyle
+    , _axis_label_style         = def
+    , _axis_grid_style          = defaultGridLineStyle
+    , _axis_label_gap           = 10
+    , _axis_label_rotation      = 0
+    , _axis_label_avoid_overlap = True
     }
 
 ----------------------------------------------------------------------
