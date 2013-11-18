@@ -1,5 +1,5 @@
 Name: Chart-tests
-Version: 1.0
+Version: 1.1
 License: BSD3
 License-file: LICENSE
 Copyright: Tim Docker, 2006-2010
@@ -64,14 +64,14 @@ Executable ChartsTestCairo
       array,
       time, 
       mtl, 
-      colour          >= 2.2.1,
-      lens            >= 3.9,
+      colour          >= 2.2.1 && < 2.4,
+      lens            >= 3.9 && < 3.11,
       data-default-class < 0.1,
       random          >= 1.0,
-      containers      >= 0.5,
+      containers      >= 0.4 && <0.6,
       old-time        >= 1.0,
-      Chart           >= 1.0,
-      Chart-cairo     >= 1.0
+      Chart           >= 1.1 && < 1.2,
+      Chart-cairo     >= 1.1 && < 1.2
   if !flag(cairo)
     Buildable: False
   Main-is: Cairo.hs
@@ -87,17 +87,17 @@ Executable ChartsTestGtk
       array,
       time, 
       mtl, 
-      colour          >= 2.2.1,
-      lens            >= 3.9,
+      colour          >= 2.2.1 && < 2.4,
+      lens            >= 3.9 && < 3.11,
       data-default-class < 0.1,
       random          >= 1.0,
-      containers      >= 0.5,
+      containers      >= 0.4 && <0.6,
       old-time        >= 1.0,
       gtk             >= 0.9.11,
       cairo           >= 0.9.11,
-      Chart           >= 1.0,
-      Chart-gtk       >= 1.0,
-      Chart-cairo      >= 1.0
+      Chart           >= 1.1 && < 1.2,
+      Chart-gtk       >= 1.1 && < 1.2,
+      Chart-cairo     >= 1.1 && < 1.2
   if !flag(gtk)
     Buildable: False
   Main-is: TestPicking.hs
@@ -113,17 +113,17 @@ Executable ChartsTestDiagramsCairo
       array,
       time, 
       mtl, 
-      colour          >= 2.2.1,
-      lens            >= 3.9,
+      colour          >= 2.2.1 && < 2.4,
+      lens            >= 3.9 && < 3.11,
       data-default-class < 0.1,
       random          >= 1.0,
-      containers      >= 0.5,
+      containers      >= 0.4 && <0.6,
       old-time        >= 1.0,
-      Chart           >= 0.17,
-      Chart-diagrams  >= 0.1,
-      diagrams-cairo  >= 0.7,
-      diagrams-lib    >= 0.7,
-      diagrams-core   >= 0.7
+      Chart           >= 1.1 && < 1.2,
+      Chart-diagrams  >= 1.1 && < 1.2,
+      diagrams-cairo  >= 0.7 && < 0.8,
+      diagrams-lib    >= 0.7 && < 0.8,
+      diagrams-core   >= 0.7 && < 0.8
   if !flag(cairo) || !flag(diagrams)
     Buildable: False
   Main-is: DiagramsCairo.hs
@@ -139,17 +139,19 @@ Executable ChartsTestDiagramsSVG
       array,
       time, 
       mtl, 
-      colour          >= 2.2.1,
-      lens            >= 3.9,
+      colour          >= 2.2.1 && < 2.4,
+      lens            >= 3.9 && < 3.11,
       data-default-class < 0.1,
+      bytestring >= 0.9 && < 1.0,
+      blaze-svg >= 0.3.3,
       random          >= 1.0,
-      containers      >= 0.5,
+      containers      >= 0.4 && <0.6,
       old-time        >= 1.0,
-      Chart           >= 0.17,
-      Chart-diagrams  >= 0.1,
-      diagrams-svg    >= 0.7,
-      diagrams-lib    >= 0.7,
-      diagrams-core   >= 0.7
+      Chart           >= 1.1 && < 1.2,
+      Chart-diagrams  >= 1.1 && < 1.2,
+      diagrams-svg    >= 0.8 && < 0.9,
+      diagrams-lib    >= 0.7 && < 0.8,
+      diagrams-core   >= 0.7 && < 0.8
   if !flag(diagrams)
     Buildable: False
   Main-is: DiagramsSVG.hs
@@ -165,17 +167,17 @@ Executable ChartsTestDiagramsEPS
       array,
       time, 
       mtl, 
-      colour          >= 2.2.1,
-      lens            >= 3.9,
+      colour          >= 2.2.1 && < 2.4,
+      lens            >= 3.9 && < 3.11,
       data-default-class < 0.1,
       random          >= 1.0,
-      containers      >= 0.5,
+      containers      >= 0.4 && <0.6,
       old-time        >= 1.0,
-      Chart           >= 0.17,
-      Chart-diagrams  >= 0.1,
-      diagrams-postscript    >= 0.7,
-      diagrams-lib    >= 0.7,
-      diagrams-core   >= 0.7
+      Chart           >= 1.1 && < 1.2,
+      Chart-diagrams  >= 1.1 && < 1.2,
+      diagrams-postscript    >= 0.7 && < 0.8,
+      diagrams-lib    >= 0.7 && < 0.8,
+      diagrams-core   >= 0.7 && < 0.8
   if !flag(diagrams)
     Buildable: False
   Main-is: DiagramsEPS.hs
@@ -191,15 +193,15 @@ Executable ChartsTestDrawingCairo
       array,
       time, 
       mtl, 
-      colour          >= 2.2.1,
-      lens            >= 3.9,
+      colour          >= 2.2.1 && < 2.4,
+      lens            >= 3.9 && < 3.11,
       data-default-class < 0.1,
       random          >= 1.0,
-      containers      >= 0.5,
+      containers      >= 0.4 && <0.6,
       old-time        >= 1.0,
       cairo           >= 0.9.11,
-      Chart           >= 1.0,
-      Chart-cairo     >= 1.0
+      Chart           >= 1.1 && < 1.2,
+      Chart-cairo     >= 1.1 && < 1.2
   if !flag(cairo)
     Buildable: False
   Main-is: Cairo.hs
@@ -215,17 +217,17 @@ Executable ChartsTestDrawingDiagramsCairo
       array,
       time, 
       mtl, 
-      colour          >= 2.2.1,
-      lens            >= 3.9,
+      colour          >= 2.2.1 && < 2.4,
+      lens            >= 3.9 && < 3.11,
       data-default-class < 0.1,
       random          >= 1.0,
-      containers      >= 0.5,
+      containers      >= 0.4 && <0.6,
       old-time        >= 1.0,
-      Chart           >= 1.0,
-      Chart-diagrams  >= 1.0,
-      diagrams-cairo  >= 0.7,
-      diagrams-lib    >= 0.7,
-      diagrams-core   >= 0.7
+      Chart           >= 1.1 && < 1.2,
+      Chart-diagrams  >= 1.1 && < 1.2,
+      diagrams-cairo  >= 0.7 && < 0.8,
+      diagrams-lib    >= 0.7 && < 0.8,
+      diagrams-core   >= 0.7 && < 0.8
   if !flag(cairo) || !flag(diagrams)
     Buildable: False
   Main-is: DiagramsCairo.hs
@@ -241,19 +243,19 @@ Executable ChartsTestCompareFonts
       array,
       time, 
       mtl, 
-      colour          >= 2.2.1,
-      lens            >= 3.9,
+      colour          >= 2.2.1 && < 2.4,
+      lens            >= 3.9 && < 3.11,
       data-default-class < 0.1,
       random          >= 1.0,
-      containers      >= 0.5,
+      containers      >= 0.4 && <0.6,
       old-time        >= 1.0,
       cairo           >= 0.9.11,
-      Chart           >= 0.17,
-      Chart-diagrams  >= 0.1,
-      Chart-cairo     >= 0.1,
-      diagrams-cairo  >= 0.7,
-      diagrams-lib    >= 0.7,
-      diagrams-core   >= 0.7
+      Chart           >= 1.1 && < 1.2,
+      Chart-diagrams  >= 1.1 && < 1.2,
+      Chart-cairo     >= 1.1 && < 1.2,
+      diagrams-cairo  >= 0.7 && < 0.8,
+      diagrams-lib    >= 0.7 && < 0.8,
+      diagrams-core   >= 0.7 && < 0.8
   if !flag(cairo) || !flag(diagrams)
     Buildable: False
   Main-is: Compare.hs

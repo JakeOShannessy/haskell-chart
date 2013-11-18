@@ -1,26 +1,19 @@
-# Use cabal
-#CABAL=cabal
-#RUNGHC=runghc
-#GHCPKG=ghc-pkg
+# Use cabal with sandboxes
+CABAL=cabal
 
-# or use cabal-dev
-CABAL=cabal-dev -s$(CURDIR)/cabal-dev
-RUNGHC=GHC_PACKAGE_PATH=$(CURDIR)/cabal-dev/packages-7.6.3.conf: runghc
-GHCPKG=GHC_PACKAGE_PATH=$(CURDIR)/cabal-dev/packages-7.6.3.conf: ghc-pkg
+.cabal-sandbox:
+	$(CABAL) sandbox init
 
-install: unregister
-	cd chart && $(CABAL) install --force-reinstalls
-	cd chart-cairo && $(CABAL) install --force-reinstalls 
-	cd chart-gtk && $(CABAL) install --force-reinstalls 
-	cd chart-diagrams && $(CABAL) install --force-reinstalls 
+install: .cabal-sandbox unregister
+	$(CABAL) install chart/ chart-cairo/ chart-gtk/ chart-diagrams/
 
 unregister:
-	-$(GHCPKG) unregister Chart-diagrams
-	-$(GHCPKG) unregister Chart-gtk
-	-$(GHCPKG) unregister Chart-cairo
-	-$(GHCPKG) unregister Chart
+	-$(CABAL) sandbox hc-pkg unregister Chart-diagrams
+	-$(CABAL) sandbox hc-pkg unregister Chart-gtk
+	-$(CABAL) sandbox hc-pkg unregister Chart-cairo
+	-$(CABAL) sandbox hc-pkg unregister Chart
 
-clean:
+clean: unregister
 	cd chart && $(CABAL) clean
 	cd chart-cairo && $(CABAL) clean
 	cd chart-gtk && $(CABAL) clean
@@ -30,7 +23,8 @@ sdist:
 	cd chart && $(CABAL) sdist
 	cd chart-cairo && $(CABAL) sdist
 	cd chart-gtk && $(CABAL) sdist
+	cd chart-diagrams && $(CABAL) sdist
 
 tests:
-	cd chart-tests && $(CABAL) install --flags="cairo gtk diagrams"
+	$(CABAL) install chart-tests/ --flags="cairo gtk diagrams"
 

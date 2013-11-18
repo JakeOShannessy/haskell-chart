@@ -11,6 +11,7 @@
 
 module Graphics.Rendering.Chart.Axis.Types(
     AxisData(..),
+    AxisVisibility(..),
     AxisT(..),
     AxisStyle(..),
     PlotValue(..),
@@ -36,10 +37,13 @@ module Graphics.Rendering.Chart.Axis.Types(
     axisGridAtBigTicks,
     axisGridAtLabels,
     axisGridHide,
-    axisTicksHide,
-    axisLabelsHide,
     axisLabelsOverride,
+    
+    axis_show_line,
+    axis_show_ticks,
+    axis_show_labels,
 
+    axis_visibility,
     axis_viewport,
     axis_tropweiv,
     axis_ticks,
@@ -77,9 +81,25 @@ class Ord a => PlotValue a where
     fromValue:: Double -> a
     autoAxis :: AxisFn a
 
+-- | Configures whick visual elements of a axis are shown at the
+--   appropriate edge of a plot area.
+data AxisVisibility = AxisVisibility
+  { -- | Whether to display a line along the axis.
+    _axis_show_line :: Bool
+    
+    -- | Whether to display the tick marks.
+  , _axis_show_ticks :: Bool
+
+    -- | Whether to display the labels.
+  , _axis_show_labels :: Bool
+  }
+
 -- | The basic data associated with an axis showing values of type x.
 data AxisData x = AxisData {
-
+    
+    -- | Which parts of the axis shall be displayed.
+    _axis_visibility :: AxisVisibility,
+    
     -- | The _axis_viewport function maps values into device coordinates.
     _axis_viewport :: Range -> x -> Double,
 
@@ -108,16 +128,16 @@ data AxisData x = AxisData {
 
 -- | Control values for how an axis gets displayed.
 data AxisStyle = AxisStyle {
-    _axis_line_style     :: LineStyle,
-    _axis_label_style    :: FontStyle,
-    _axis_grid_style     :: LineStyle,
-
+    -- | 'LineStyle' to use for axis line and ticks.
+    _axis_line_style  :: LineStyle,
+    -- | 'FontStyle' to use for axis labels.
+    _axis_label_style :: FontStyle,
+    -- | 'LineStyle' to use for axis grid.
+    _axis_grid_style  :: LineStyle,
     -- | How far the labels are to be drawn from the axis.
     _axis_label_gap      :: Double,
-    
-    -- | The rotation of each label.
+    -- | The rotation of each label in degrees.
     _axis_label_rotation :: Double,
-    
     -- | Reduce the number of labels to prevent overlaps.
     _axis_label_avoid_overlap :: Bool
 }
@@ -163,26 +183,21 @@ axisGridAtLabels ad   = ad{ _axis_grid = map fst vs }
         [] -> []
         ls -> head ls
 
--- | Modifier to remove ticks from an axis
-axisTicksHide       :: AxisData x -> AxisData x
-axisTicksHide ad     = ad{ _axis_ticks  = [] }
-
--- | Modifier to remove labels from an axis
-axisLabelsHide      :: AxisData x -> AxisData x
-axisLabelsHide ad    = ad{ _axis_labels = []}
-
 -- | Modifier to change labels on an axis
 axisLabelsOverride  :: [(x,String)] -> AxisData x -> AxisData x
 axisLabelsOverride o ad = ad{ _axis_labels = [o] }
 
 minsizeAxis :: AxisT x -> ChartBackend RectSize     -- TODO: the size of the axis labels should be accounted for here.
 minsizeAxis (AxisT at as rev ad) = do
+    let labelVis = _axis_show_labels $ _axis_visibility $ ad
+        tickVis  = _axis_show_ticks  $ _axis_visibility $ ad
+        labels = if labelVis then labelTexts ad else []
+        ticks = if tickVis then _axis_ticks ad else []
     labelSizes <- withFontStyle (_axis_label_style as) $ do
-      mapM (mapM (\s->rotatedTextDimension s (_axis_label_rotation as))) (labelTexts ad)
-      -- mapM (mapM textDimension) (labelTexts ad)
+        mapM (mapM (\s->rotatedTextDimension s (_axis_label_rotation as))) (labelTexts ad)
 
     let ag      = _axis_label_gap as
-    let tsize   = maximum ([0] ++ [ max 0 (-l) | (v,l) <- _axis_ticks ad ])
+    let tsize   = maximum ([0] ++ [ max 0 (-l) | (v,l) <- ticks ])
 
     let hw = maximum0 (map (maximum0.map fst) labelSizes)
     let hh = ag + tsize + (sum . intersperse ag . map (maximum0.map snd) $ labelSizes)
@@ -196,7 +211,6 @@ minsizeAxis (AxisT at as rev ad) = do
 		     E_Left   -> (vw,vh)
 		     E_Right  -> (vw,vh)
     return sz
-    -- return (hw,300)
 
 labelTexts :: AxisData a -> [[String]]
 labelTexts ad = map (map snd) (_axis_labels ad)
@@ -364,6 +378,7 @@ renderAxisGrid sz@(w,h) at@(AxisT re as rev ad) = do
 -- labels, and the labelling function
 makeAxis :: PlotValue x => (x -> String) -> ([x],[x],[x]) -> AxisData x
 makeAxis labelf (labelvs, tickvs, gridvs) = AxisData {
+    _axis_visibility = def,
     _axis_viewport = newViewport,
     _axis_tropweiv = newTropweiv,
     _axis_ticks    = newTicks,
@@ -383,6 +398,7 @@ makeAxis labelf (labelvs, tickvs, gridvs) = AxisData {
 makeAxis' :: Ord x => (x -> Double) -> (Double -> x) -> (x -> String)
                    -> ([x],[x],[x]) -> AxisData x
 makeAxis' t f labelf (labelvs, tickvs, gridvs) = AxisData {
+    _axis_visibility = def,
     _axis_viewport = linMap t (minimum labelvs, maximum labelvs),
     _axis_tropweiv = invLinMap f t (minimum labelvs, maximum labelvs),
     _axis_ticks    = zip tickvs (repeat 2)  ++  zip labelvs (repeat 5),
@@ -393,9 +409,11 @@ makeAxis' t f labelf (labelvs, tickvs, gridvs) = AxisData {
 
 ----------------------------------------------------------------------
 
+-- | The default 'LineStyle' of an axis.
 defaultAxisLineStyle :: LineStyle
 defaultAxisLineStyle = solidLine 1 $ opaque black
 
+-- | The default 'LineStyle' of a plot area grid.
 defaultGridLineStyle :: LineStyle
 defaultGridLineStyle = dashedLine 1 [5,5] $ opaque lightgrey
 
@@ -411,6 +429,14 @@ instance Default AxisStyle where
     , _axis_label_gap           = 10
     , _axis_label_rotation      = 0
     , _axis_label_avoid_overlap = True
+    }
+
+-- | By default all parts of a axis are visible.
+instance Default AxisVisibility where
+  def = AxisVisibility
+    { _axis_show_line   = True
+    , _axis_show_ticks  = True
+    , _axis_show_labels = True
     }
 
 ----------------------------------------------------------------------
@@ -439,6 +465,7 @@ invLinMap f t (v3,v4) (d1,d2) d =
   where
     doubleRange = t v4 - t v3
 
+$( makeLenses ''AxisVisibility )
 $( makeLenses ''AxisData )
 $( makeLenses ''AxisStyle )
 
