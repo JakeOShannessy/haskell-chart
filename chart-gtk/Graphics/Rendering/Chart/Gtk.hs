@@ -55,8 +55,8 @@ renderableToWindow chart windowWidth windowHeight = do
     initGuiOnce
     window <- createRenderableWindow chart windowWidth windowHeight
     -- press any key to exit the loop
-    G.onKeyPress window $ anyKey (G.widgetDestroy window)
-    G.onDestroy window G.mainQuit
+    G.on window G.keyPressEvent $ C.liftIO (G.widgetDestroy window) >> return False
+    G.on window G.deleteEvent $ C.liftIO G.mainQuit >> return False
     G.widgetShowAll window
     G.mainGUI
 
@@ -66,18 +66,21 @@ createRenderableWindow chart windowWidth windowHeight = do
     window <- G.windowNew
     canvas <- G.drawingAreaNew
     G.widgetSetSizeRequest window windowWidth windowHeight
-    G.onExpose canvas $ const (updateCanvas chart canvas)
+    G.on canvas G.exposeEvent $ C.liftIO (updateCanvas chart canvas) >> return False
     G.set window [G.containerChild G.:= canvas]
     return window
 
 
 updateCanvas :: Renderable a -> G.DrawingArea  -> IO Bool
 updateCanvas chart canvas = do
-    win <- G.widgetGetDrawWindow canvas
-    (width, height) <- G.widgetGetSize canvas
-    regio <- G.regionRectangle $ GE.Rectangle 0 0 width height
+    win' <- G.widgetGetWindow canvas
+    let win = case win' of
+            Just w -> w
+            Nothing -> error "widgetGetWindow: widget not yet realized"
+    width  <- G.widgetGetAllocatedWidth  canvas
+    height <- G.widgetGetAllocatedHeight canvas
     let sz = (fromIntegral width,fromIntegral height)
-    G.drawWindowBeginPaintRegion win regio
-    G.renderWithDrawable win $ runBackend (defaultEnv bitmapAlignmentFns) (render chart sz) 
+    G.drawWindowBeginPaintRect win $ GE.Rectangle 0 0 width height
+    G.renderWithDrawWindow win $ runBackend (defaultEnv bitmapAlignmentFns) (render chart sz) 
     G.drawWindowEndPaint win
     return True
